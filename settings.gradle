@@ -8,4 +8,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "OpenCV343"
 include ':app'
-include ':sdkopencv'
+include ':opencv3410'

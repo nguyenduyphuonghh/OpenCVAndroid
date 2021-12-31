@@ -26,6 +26,8 @@ import java.io.IOException
 
 class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListener2 {
 
+    private var screenRotation: Int = 0
+
     // view
     private val viewFinder by lazy { findViewById<JavaCameraView>(R.id.cameraView) }
     private val orientationText by lazy { findViewById<TextView>(R.id.rotation_tv) }
@@ -57,6 +59,12 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         private const val FACE_DIR = "facelib"
         private const val FACE_MODEL = "haarcascade_frontalface_alt2.xml"
         private const val byteSize = 4096 // buffer size
+
+        // RGB
+        private val YELLOW = Scalar(255.0, 255.0, 0.0)
+        private val BLUE = Scalar(0.0, 0.0, 255.0)
+        private val RED = Scalar(255.0, 0.0, 0.0)
+        private val GREEN = Scalar(0.0, 255.0, 0.0)
     }
 
     private fun checkOpenCV(context: Context) =
@@ -130,7 +138,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
                         orientationText.text = getString(R.string.n_0_degree)
                     }
                 }
-
+                screenRotation = orientationText.text.toString().toInt()
             }
         }
         if (mOrientationEventListener.canDetectOrientation()) {
@@ -255,9 +263,26 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
         if (imageRatio.equals(1.0)) return src
 
+        // Downsize image
         val dstSize = Size(imageSize.width * imageRatio, imageSize.height * imageRatio)
         val dst = Mat()
         Imgproc.resize(src, dst, dstSize)
+
+        // Check rotation
+        when (screenRotation) {
+            0-> {
+                Core.rotate(dst, dst, Core.ROTATE_90_CLOCKWISE)
+                //mirror
+                Core.flip(dst, dst, 1)
+            }
+            180-> {
+                Core.rotate(dst, dst, Core.ROTATE_90_COUNTERCLOCKWISE)
+//                Core.flip(dst, dst, 1)
+            }
+            270-> {
+                Core.flip(dst, dst, 0)
+            }
+        }
         return dst
     }
 
@@ -265,34 +290,99 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         val faceRects = MatOfRect()
         faceDetector!!.detectMultiScale(
             grayMat,
-            faceRects
-        )
+            faceRects)
+
+        val scrW = imageMat.width().toDouble()
+        val scrH = imageMat.height().toDouble()
 
         for (rect in faceRects.toArray()) {
-            var x = 0.0
-            var y = 0.0
+            var x = rect.x.toDouble()
+            var y = rect.y.toDouble()
             var w = 0.0
             var h = 0.0
+            var rw = rect.width.toDouble() // rectangle width
+            var rh = rect.height.toDouble() // rectangle height
 
             if (imageRatio.equals(1.0)) {
-                x = rect.x.toDouble()
-                y = rect.y.toDouble()
-                w = x + rect.width
-                h = y + rect.height
+                w = x + rw
+                h = y + rh
             } else {
-                x = rect.x.toDouble() / imageRatio
-                y = rect.y.toDouble() / imageRatio
-                w = x + (rect.width / imageRatio)
-                h = y + (rect.height / imageRatio)
+                x /= imageRatio
+                y /= imageRatio
+                rw /= imageRatio
+                rh /= imageRatio
+                w = x + rw
+                h = y + rh
             }
 
-            Imgproc.rectangle(
-                imageMat,
-                Point(x, y),
-                Point(w, h),
-                Scalar(255.0, 0.0, 0.0)
-            )
+            when (screenRotation) {
+                90-> {
+                    rectFace(x, y, w, h, RED)
+                    drawDot(x, y, GREEN)
+                }
+                0-> {
+                    rectFace(y, x, h, w, RED)
+                    drawDot(y, x, GREEN)
+                }
+                180-> {
+                    Log.d(TAG,"x: $x -- y: $y :: sW: $scrW, sH: $scrH")
+
+//                    rectFace(y, x, h, w, RED)
+//                    drawDot(y, x, GREEN)
+
+                    // fix height
+                    val yFix = scrW - y
+                    val hFix = yFix - rh
+
+                    rectFace(yFix, x, hFix, w, YELLOW)
+                    drawDot(yFix, x, BLUE)
+                }
+                270-> {
+//                    rectFace(x, y, w, h, RED)
+//                    drawDot(x, y, GREEN)
+
+                    // fix height
+                    val yFix = scrH - y
+                    val hFix = yFix - rh
+
+                    rectFace(x, yFix, w, hFix, YELLOW)
+                    drawDot(x, yFix, BLUE)
+                }
+            }
         }
+    }
+
+    /* Draw rectangle of the face:
+    x: x-coor of upper corner
+    y: y-coor of upper corner
+    w: x-coor of opposite corner
+    h: y-coor of opposite corner
+    color: RGB
+ */
+    fun rectFace(x: Double, y: Double, w: Double, h: Double, color:Scalar) {
+        Imgproc.rectangle(
+            imageMat, // image
+            Point(x, y), // upper corner
+            Point(w, h),  // opposite corner
+            color  // RGB
+        )
+    }
+
+    /*
+    Draw a dot:
+        x: x-coor of center
+        y: y-coor of center
+        color: RGB
+ */
+    fun drawDot(x: Double, y:Double, color:Scalar) {
+        Imgproc.circle(
+            imageMat, // image
+            Point(x, y),  // center
+            4, // radius
+            color, // RGB
+            -1, // thickness: -1 = filled in
+            8 // line type
+        )
     }
 
     override fun onPause() {

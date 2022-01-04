@@ -149,6 +149,8 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
         viewFinder.visibility = SurfaceView.VISIBLE
         viewFinder.setCameraIndex(
+            //Todo handle front camera
+//            CameraBridgeViewBase.CAMERA_ID_FRONT
             CameraCharacteristics.LENS_FACING_FRONT
         )
         viewFinder.setCvCameraViewListener(this)
@@ -270,6 +272,20 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
         // Check rotation
         when (screenRotation) {
+            // this setting is for front camera
+//            0 -> {
+//                Core.rotate(dst, dst, Core.ROTATE_90_COUNTERCLOCKWISE)
+//                //mirror
+////                Core.flip(dst, dst, 1)
+//            }
+//            180 -> {
+//                Core.rotate(dst, dst, Core.ROTATE_90_CLOCKWISE)
+////                Core.flip(dst, dst, 1)
+//            }
+//            270 -> {
+//                Core.flip(dst, dst, 0)
+//            }
+
             0-> {
                 Core.rotate(dst, dst, Core.ROTATE_90_CLOCKWISE)
                 //mirror
@@ -288,9 +304,12 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
     private fun drawFaceRectangle() {
         val faceRects = MatOfRect()
+//        faceDetector!!.detectMultiScale(
+//            grayMat,
+//            faceRects)
         faceDetector!!.detectMultiScale(
             grayMat,
-            faceRects)
+            faceRects, 1.1, 2, 0, Size(100.0, 100.0))
 
         val scrW = imageMat.width().toDouble()
         val scrH = imageMat.height().toDouble()
@@ -316,28 +335,28 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             }
 
             when (screenRotation) {
-                90-> {
+                90 -> {
                     rectFace(x, y, w, h, RED)
                     drawDot(x, y, GREEN)
                 }
-                0-> {
+                0 -> {
                     rectFace(y, x, h, w, RED)
                     drawDot(y, x, GREEN)
                 }
-                180-> {
-                    Log.d(TAG,"x: $x -- y: $y :: sW: $scrW, sH: $scrH")
+                180 -> {
+                    Log.d(TAG, "x: $x -- y: $y :: sW: $scrW, sH: $scrH")
 
-//                    rectFace(y, x, h, w, RED)
-//                    drawDot(y, x, GREEN)
+                    rectFace(y, x, h, w, RED)
+                    drawDot(y, x, GREEN)
 
                     // fix height
-                    val yFix = scrW - y
-                    val hFix = yFix - rh
-
-                    rectFace(yFix, x, hFix, w, YELLOW)
-                    drawDot(yFix, x, BLUE)
+//                    val yFix = scrW - y
+//                    val hFix = yFix - rh
+//
+//                    rectFace(yFix, x, hFix, w, YELLOW)
+//                    drawDot(yFix, x, BLUE)
                 }
-                270-> {
+                270 -> {
 //                    rectFace(x, y, w, h, RED)
 //                    drawDot(x, y, GREEN)
 
@@ -359,7 +378,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     h: y-coor of opposite corner
     color: RGB
  */
-    fun rectFace(x: Double, y: Double, w: Double, h: Double, color:Scalar) {
+    fun rectFace(x: Double, y: Double, w: Double, h: Double, color: Scalar) {
         Imgproc.rectangle(
             imageMat, // image
             Point(x, y), // upper corner
@@ -374,7 +393,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         y: y-coor of center
         color: RGB
  */
-    fun drawDot(x: Double, y:Double, color:Scalar) {
+    fun drawDot(x: Double, y: Double, color: Scalar) {
         Imgproc.circle(
             imageMat, // image
             Point(x, y),  // center
